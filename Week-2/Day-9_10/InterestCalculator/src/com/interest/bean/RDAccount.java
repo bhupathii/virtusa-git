@@ -13,6 +13,9 @@ public class RDAccount extends Account {
         if (months < 0)
             throw new InvalidInputException("Invalid months. Please enter non-negative values.");
 
+        if (months != 6 && months != 9 && months != 12 && months != 15 && months != 18 && months != 21)
+            throw new InvalidInputException("Invalid months. Please enter 6, 9, 12, 15, 18, or 21 months.");
+
         if (age < 0)
             throw new InvalidInputException("Invalid age. Please enter non-negative values.");
 
@@ -42,6 +45,8 @@ public class RDAccount extends Account {
             case 21:
                 interestRate = (age >= 60) ? 9.25 : 8.75;
                 break;
+            default:
+                interestRate = 0;
         }
 
         return (amount * interestRate) / 100;
