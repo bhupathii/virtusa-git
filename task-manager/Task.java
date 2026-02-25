@@ -1,12 +1,12 @@
-public class Task {
+import java.io.Serializable;
+
+public class Task implements Serializable {
+    private static final long serialVersionUID = 1L;
     private int id;
     private String title;
-    private String priority;
+    private Priority priority;
 
-    public Task(int id, String title, String priority) throws InvalidTaskException {
-        if (!priority.equals("HIGH") && !priority.equals("MEDIUM") && !priority.equals("LOW")) {
-            throw new InvalidTaskException("Invalid priority");
-        }
+    public Task(int id, String title, Priority priority) {
         this.id = id;
         this.title = title;
         this.priority = priority;
@@ -20,7 +20,7 @@ public class Task {
         return title;
     }
 
-    public String getPriority() {
+    public Priority getPriority() {
         return priority;
     }
 
