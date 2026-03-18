@@ -1,88 +1,79 @@
-# Task Manager Project - Complete Architecture & Implementation Guide
+Task Manager Project - Complete Architecture & Implementation Guide
 
-This document explains the complete architecture of the `task-manager` project, demonstrating how various core Java concepts, object-oriented principles, and Java 8+ features are implemented throughout the codebase.
+This document explains the complete architecture of the task-manager project, demonstrating how various core Java concepts, object-oriented principles, and Java 8+ features are implemented throughout the codebase.
 
-## 1. Project Motivation and Architecture
+1. Project Motivation and Architecture
 
-The `task-manager` is a console-based application designed to manage a list of tasks. The architecture follows a simple domain-service-repository pattern:
+The task-manager is a console-based application designed to manage a list of tasks. The architecture follows a simple domain-service-repository pattern:
 
-- **Domain Models**: `Task.java`, `DeadlineTask.java`, `Priority.java`. These represent the core entities of the application.
-- **Service Layer**: `TaskService.java`. Encapsulates the business logic, stream manipulations, threading, and data processing.
-- **Data Layer (Simulated)**: `Repository.java` (Generic storage) and standard Java I/O built into `TaskService` (Serialization).
-- **Presentation/Entry Point**: `Main.java`. Serves as the driver class to demonstrate all functionalities.
+- Domain Models: Priority.java, Task.java, Schedulable.java, DeadlineTask.java. These represent the core entities (the data) of the application.
+- Service Layer: TaskService.java. The engine of the application. It encapsulates the business logic, stream manipulations, multithreading, and data processing.
+- Data Layer (Simulated): Repository.java to act as generic storage, supplemented by standard Java I/O built directly into TaskService for saving data across sessions (Serialization).
+- Presentation/Entry Point: Main.java. Serves as the driver class to instantiate services and demonstrate all functionalities.
 
-## 2. Core Java Basics (Day 2)
+2. Detailed Code Breakdown & Java Concepts
 
-- **Syntax, Data Types, Operators**: Demonstrated extensively across all classes. `int` for IDs, `String` for titles, `boolean` for completion tracking. Standard operators are used for iteration and condition checks.
-- **JVM Architecture**: The JVM interprets the compiled `.class` files. When we run `java Main`, the classloader loads `Main.class` and all referenced dependencies into memory, the bytecode verifier ensures safety, and the execution engine runs the program.
+2.1. The Domain Models (The Data)
 
-## 3. Static Keywords, Packages & Access Modifiers (Day 3)
+Priority.java (Enums)
+This is a simple enum containing HIGH, MEDIUM, and LOW. Enums restrict variables to a predefined set of constants, ensuring type safety so priorities can't be accidentally defined as an invalid string.
 
-- **Access Modifiers**: `private` (e.g., `tasks` list in `TaskService`) ensures encapsulation. `public` methods expose the API. `protected` isn't explicitly needed here but could be applied if we split domains into different packages.
-- **Static**: `private static final long serialVersionUID` in `Task` and `DeadlineTask` ensures proper versioning during serialization. `TaskBuilder` is a `public static class`, meaning it doesn't require an instance of `Task` to be instantiated.
+Task.java (Encapsulation & Nested Classes)
+This is the base class representing a generic task. State fields (id, title, priority) are declared private (Encapsulation) and can only be accessed via public getters.
+It implements Serializable, allowing Java to convert a Task object into a byte stream to be saved to a file.
+It contains a static nested class named TaskBuilder. This implements the Builder Design Pattern, allowing you to create a Task step-by-step cleanly (e.g., new Task.TaskBuilder().setId(1)...).
 
-## 4. Arrays & Strings (Day 4)
+Schedulable.java (Interfaces)
+This is a contract interface that defines two methods: isOverdue() and delay(int days). Any class that implements this interface is forced to provide the concrete logic for these methods.
 
-- **Strings, StringBuilder, StringBuffer**: The `generateReport()` method in `TaskService.java` demonstrates both `StringBuilder` (faster, non-thread-safe) and `StringBuffer` (thread-safe, synchronized) to construct complex string outputs efficiently instead of continuous string concatenation.
-- **1D Arrays**: `getTaskTitlesArray()` uses Streams to map a list of objects down to an array of just their string titles `String[]`.
-- **2D Arrays**: `getTaskMatrix()` constructs a `String[][]` containing IDs and Title/Priority mappings, simulating tabular data mapping.
+DeadlineTask.java (Inheritance & Polymorphism)
+This class uses the extends keyword to inherit all properties from Task, but adds a specific LocalDate deadline field.
+It uses implements Schedulable to fulfill the interface contract.
+Polymorphism is demonstrated here: It overrides the toString() method of the parent Task class. At runtime, if a Task collection contains a DeadlineTask, Java dynamically knows to call this specific, overridden version of toString() rather than the parent's generic version.
 
-## 5. OOPs Fundamentals (Day 1)
+2.2. The Storage Layer
 
-- **Encapsulation**: State fields in `Task` (`id`, `title`, `priority`) are heavily encapsulated using `private` access modifiers and retrieved via public getters.
-- **Abstraction**: `Repository<T>` abstractly defines a storage medium without worrying about specific data types until instantiated.
-- **Inheritance & Polymorphism**: `DeadlineTask` inherits from `Task` using the `extends` keyword. It overrides `toString()`, showing runtime polymorphism.
-- **Interfaces**: `Schedulable.java` acts as a contract. `DeadlineTask` `implements` it to define functionality like `delay()` and `isOverdue()`.
+Repository.java (Generics)
+This class is defined using Generic Typing: class Repository<T>. The <T> stands for Type. This allows the repository to hold a list of any object type without explicitly knowing what that object is at compile-time. We instantiate it in Main using Repository<Task>, locking that specific instance into only accepting Tasks securely.
 
-## 6. Java Collections & Generics (Day 5)
+2.3. The Service Layer (The Engine)
 
-- **Generics**: `Repository<T>` allows saving any object type. In `TaskService`, `Function<Task, R>` maps a `Task` to any generic return type `R`.
-- **Collections**: `List<Task>` handles ordered data, `Set<Integer>` manages unique completed IDs automatically preventing duplicates, and `Map<Priority, List<Task>>` creates groupings of objects based on an Enum key.
+TaskService.java (Collections, Streams, I/O, Strings)
+This class holds the core business logic.
+- Collections: It uses an ArrayList to store tasks (maintaining insertion order) and a HashSet to store the IDs of completed tasks (ensuring ultra-fast O(1) lookups and naturally preventing duplicate completions).
+- Custom Annotation Processing: Methods here are tagged with @LogExecution. While this doesn't change the execution natively, it allows us to inspect the method at runtime via Reflection in Main.java to read metadata about what the method does.
+- Exception Handling: The markCompleted() method throws an InvalidTaskException (a custom checked exception) if you attempt to complete a task that doesn't exist or is already completed.
+- Java 8 Streams: Methods like showCompleted() and filterTasks() use the Streams API to process collections declaratively. For example, instead of writing an if-statement inside a manual for-loop, it uses .stream().filter(t -> ...).forEach(...).
+- Functional Interfaces: It accepts Predicate<Task>, Function<Task, R>, Consumer<Task>, and Supplier<Task> as arguments. This advanced technique allows the caller (Main.java) to pass custom inline behavior (lambda expressions) directly into the processing methods.
+- File I/O: saveToFile() and loadFromFile() use ObjectOutputStream and ObjectInputStream to save (serialize) the entire tasks List and completedTasks Set into a binary file (tasks.ser). This restores state natively across restarts.
+- Strings & Arrays: generateReport() uses StringBuilder and StringBuffer to efficiently piece together a long textual string report without creating hundreds of temporary, wasteful string objects in memory.
 
-## 7. Exception Handling (Day 11)
+2.4. Background Processing
 
-- **Custom Exceptions**: `InvalidTaskException.java` is a checked exception extending `Exception`. It is explicitly caught in `Main.java` when attempting to complete task `ID 99`.
-- **Try/Catch**: Utilized for File I/O operations and intercepting custom business logic exceptions safely to prevent application crashes.
+BackupDaemon.java (Threading Basics)
+This class implements Runnable, meaning it defines a set of work that can be executed on a separate, concurrent Thread.
+- Thread Synchronization (wait / notify): When the Daemon starts, it calls taskService.waitForNewTask(). Inside TaskService, this method hits a lock.wait() statement, putting the Daemon thread to sleep indefinitely and yielding the CPU.
+- Notification: Whenever addTask() is called on the main thread, it executes lock.notifyAll() inside a synchronized block. This wakes up the sleeping Daemon thread automatically, allowing it to print a simulated backup message before looping back to sleep.
 
-## 8. Enums & Annotations (Day 12)
+2.5. The Entry Point
 
-- **Enums**: `Priority.java` (HIGH, MEDIUM, LOW) restricts task urgency to predefined constants.
-- **Annotations**: 
-  - *Built-in*: `@SuppressWarnings("deprecation")`, `@Override`, `@Deprecated`.
-  - *Custom*: `@LogExecution` is a retention policy `RUNTIME` annotation accessed via Reflection in `Main.java` to dynamically print metadata about executing methods.
+Main.java (Execution)
+This is where everything comes together:
+1. It instantiates the TaskService and starts the BackupDaemon Thread.
+2. It uses the Builder to construct standard tasks, and creates one DeadlineTask, demonstrating polymorphism as they are all pushed to the same Service method organically.
+3. It intentionally tests error handling by attempting to complete a known invalid Task ID inside a try/catch block.
+4. It demonstrates inner classes contextually by:
+  - Creating a Member Inner Class instance (TaskLogger).
+  - Calling a method that defines a Local Inner Class (TaskSummary) entirely inside its execution scope.
+  - Creating an Anonymous Inner Class (Comparator) inline to quickly sort the list of tasks.
+5. It invokes the Java 8 Functional methods and passes specific Lambda expressions (e.g., t -> t.getPriority() == Priority.HIGH) into the system.
+6. Finally, it triggers the Java I/O framework to save the current dataset to tasks.ser and exits safely.
 
-## 9. Java I/O (Day 12)
+3. JVM Internals & Memory Management (Day 21 & Day 22)
 
-- **Serialization**: `loadFromFile` and `saveToFile` in `TaskService` use `ObjectInputStream` and `ObjectOutputStream` to write the full state of `tasks` and `completedTasks` continuously to a binary file `tasks.ser`.
-
-## 10. Java 8 Features (Day 13)
-
-Implementation found natively in `TaskService` and called dynamically in `Main.java`:
-- **Predicate**: Evaluating conditions (`t -> t.getPriority() == Priority.HIGH`).
-- **Function**: Transforming object states (`t -> t.getTitle().toUpperCase()`).
-- **Consumer**: Iterating actions over sequences (`t -> System.out.println(...)`).
-- **Supplier**: Providing default values lazily for isolated `Task` lookups.
-- **Streams Pipeline**: Heavy use of `.stream()`, `.filter()`, `.map()`, `.reduce()`, and `.collect()` to streamline data processing.
-
-## 11. Threading Basics (Day 14)
-
-- **Thread & Runnable**: `BackupDaemon` implements `Runnable` to do background work isolated from the main flow.
-- **Synchronization**: `TaskService` uses `synchronized (lock)` surrounding critical sections.
-- **Wait and Notify**: When `addTask` is called, it triggers `lock.notifyAll()`. `BackupDaemon` pauses via `lock.wait()` entirely efficiently until new tasks arrive to simulate a background data sink.
-
-## 12. Inner Classes (Day 15)
-
-Found explicitly across `Task` and `TaskService`:
-1. **Static Nested**: `TaskBuilder` (Builder pattern).
-2. **Member Inner**: `TaskLogger` (Accesses parent fields securely).
-3. **Local Inner**: `TaskSummary` (Confined to function scope).
-4. **Anonymous Inner**: Inline `Comparator` for sorting data visually on-the-fly.
-
-## 13. JVM Internals & Memory Management (Day 21 & Day 22)
-
-- **Classloader**: Loads classes dynamically (`Task`, `TaskService`, `Main`) into the runtime environment.
-- **JIT Compiler**: Translates `TaskService` repetitive Stream pipelines down into highly optimized machine code during runtime execution.
-- **Bytecode**: All `.java` files are compiled into platform-agnostic `.class` files.
-- **Memory Tracking**: 
-  - **Stack**: Stores primitive types (e.g., local loop integrators `i`, primitive `boolean` values for completed matching) and method frames for `filterTasks`, `mapTasks`, etc.
-  - **Heap**: Long-lived objects like `tasks` `ArrayList`, `Task` instances, and static structures reside here. When `Task` records are removed or replaced over a session's extent, the **Garbage Collector** seamlessly clears up unused memory objects automatically. 
+- Classloader: Loads classes dynamically (Task, TaskService, Main) into the runtime environment upon launch.
+- JIT Compiler: Translates the repetitive Stream pipelines found in TaskService down into highly optimized machine code while the application is running, drastically speeding up repeat execution.
+- Bytecode: All .java source files are compiled tightly into platform-agnostic .class files via the javac command.
+- Memory Tracking: 
+  - Stack: Stores simple primitives (like standard loop integrators) and all active method invocation frames (when Main calls TaskService.filterTasks, a frame is added to the stack).
+  - Heap: All long-lived objects like the tasks ArrayList, specific Task instances, and the BackupDaemon thread reside here. When Task records are removed or if the program runs continuously, the Java Garbage Collector seamlessly sweeps through the heap, clearing out any unreferenced, detached objects automatically to prevent memory leaks.
