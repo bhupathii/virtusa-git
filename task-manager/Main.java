@@ -1,4 +1,6 @@
 import java.lang.reflect.Method;
+import java.time.LocalDate;
+import java.util.Arrays;
 
 public class Main {
     @SuppressWarnings("deprecation")
@@ -6,15 +8,32 @@ public class Main {
         Repository<Task> repo = new Repository<>();
         TaskService service = new TaskService();
         String filename = "tasks.ser";
+        // Start Daemon Thread
+        System.out.println("--- Starting Backup Daemon Thread ---");
+        BackupDaemon daemon = new BackupDaemon(service);
+        Thread daemonThread = new Thread(daemon);
+        daemonThread.setDaemon(true); // Will stop when main thread stops
+        daemonThread.start();
 
         System.out.println("--- Loading from File (Serialization) ---");
         service.loadFromFile(filename);
 
-        System.out.println("\n--- Normal Operations (Enums & Annotations) ---");
+        System.out.println("\n--- Normal Operations (Enums & Annotations & Inheritance/Polymorphism) ---");
         try {
-            Task t1 = new Task(1, "Learn Java", Priority.HIGH);
-            Task t2 = new Task(2, "Build Project", Priority.MEDIUM);
-            Task t3 = new Task(3, "Watch Movie", Priority.LOW);
+            Task t1 = new Task.TaskBuilder()
+                    .setId(1)
+                    .setTitle("Learn Java")
+                    .setPriority(Priority.HIGH)
+                    .build();
+
+            Task t2 = new Task.TaskBuilder()
+                    .setId(2)
+                    .setTitle("Build Project")
+                    .setPriority(Priority.MEDIUM)
+                    .build();
+
+            // Demonstrating Inheritance and Polymorphism
+            Task t3 = new DeadlineTask(3, "Submit Assignment", Priority.HIGH, LocalDate.now().plusDays(2));
 
             repo.add(t1);
             repo.add(t2);
@@ -59,6 +78,20 @@ public class Main {
         System.out.println("\n--- Final application state (using new displayTasks() method) ---");
         service.displayTasks();
 
+        System.out.println("\n--- Demonstration of Nested Classes ---");
+
+        System.out.println("\n1. Static Nested Class [TaskBuilder used above to create tasks]");
+
+        System.out.println("\n2. Member Inner Class [TaskLogger]");
+        TaskService.TaskLogger logger = service.getTaskLogger();
+        logger.logTaskCount();
+
+        System.out.println("\n3. Local Inner Class [TaskSummary inside displayTaskSummary()]");
+        service.displayTaskSummary();
+
+        System.out.println("\n4. Anonymous Inner Class [Comparator inside sortTasksByTitle()]");
+        service.sortTasksByTitle();
+
         System.out.println("\n--- Java 8 Functional Interfaces & Streams Demo ---");
 
         System.out.println("\n1. Predicate: Filtering tasks with HIGH priority");
@@ -79,7 +112,30 @@ public class Main {
         System.out.println("\n5. Streams (Reduce): Combining all titles into a single string");
         System.out.println("Combined Titles: " + service.getCombinedTaskTitles());
 
+        System.out.println("\n--- Arrays and Strings (1D, 2D, StringBuilder, StringBuffer) ---");
+        System.out.println("\n1. Generating Report using StringBuilder & StringBuffer:");
+        System.out.println(service.generateReport());
+
+        System.out.println("\n2. Getting task titles as 1D array:");
+        String[] titles = service.getTaskTitlesArray();
+        System.out.println(Arrays.toString(titles));
+
+        System.out.println("\n3. Getting tasks as 2D matrix:");
+        String[][] matrix = service.getTaskMatrix();
+        for (String[] row : matrix) {
+            System.out.println(Arrays.toString(row));
+        }
+
+        // Allow daemon some time to process the last added task before exiting
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         System.out.println("\n--- Saving to File (Serialization) ---");
         service.saveToFile(filename);
+        
+        System.out.println("--- Application Finished ---");
     }
 }

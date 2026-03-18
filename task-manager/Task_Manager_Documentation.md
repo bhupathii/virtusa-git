@@ -1,150 +1,88 @@
-# Task Manager Project Documentation
+# Task Manager Project - Complete Architecture & Implementation Guide
 
-This document explains the core Java concepts integrated into the Task Manager application: **Enums**, **Annotations**, **File Handling**, and **Serialization**. It also highlights where and how these concepts were applied to the codebase.
+This document explains the complete architecture of the `task-manager` project, demonstrating how various core Java concepts, object-oriented principles, and Java 8+ features are implemented throughout the codebase.
 
----
+## 1. Project Motivation and Architecture
 
-## 1. Enum Types and Usage
+The `task-manager` is a console-based application designed to manage a list of tasks. The architecture follows a simple domain-service-repository pattern:
 
-### What are Enums?
-An `enum` (enumeration) is a special Java type used to define collections of constants. They are strongly typed, which means they provide compile-time safety and prevent invalid values from being assigned. 
+- **Domain Models**: `Task.java`, `DeadlineTask.java`, `Priority.java`. These represent the core entities of the application.
+- **Service Layer**: `TaskService.java`. Encapsulates the business logic, stream manipulations, threading, and data processing.
+- **Data Layer (Simulated)**: `Repository.java` (Generic storage) and standard Java I/O built into `TaskService` (Serialization).
+- **Presentation/Entry Point**: `Main.java`. Serves as the driver class to demonstrate all functionalities.
 
-### Changes in the Codebase
-Previously, the `Priority` of a task was stored as a raw `String` (e.g., `"HIGH"`, `"MEDIUM"`, `"LOW"`), and we had to rely on `if-else` or manual exceptions to validate them. We replaced this with a dedicated Enum.
+## 2. Core Java Basics (Day 2)
 
-**1. Creating the Enum (`Priority.java`):**
-```java
-public enum Priority {
-    HIGH, MEDIUM, LOW
-}
-```
+- **Syntax, Data Types, Operators**: Demonstrated extensively across all classes. `int` for IDs, `String` for titles, `boolean` for completion tracking. Standard operators are used for iteration and condition checks.
+- **JVM Architecture**: The JVM interprets the compiled `.class` files. When we run `java Main`, the classloader loads `Main.class` and all referenced dependencies into memory, the bytecode verifier ensures safety, and the execution engine runs the program.
 
-**2. Integrating Enum into `Task.java`:**
-The constructor no longer throws an `InvalidTaskException` for invalid priorities, because the Java compiler enforces that only `Priority.HIGH`, `Priority.MEDIUM`, or `Priority.LOW` can be passed.
+## 3. Static Keywords, Packages & Access Modifiers (Day 3)
 
-```diff
-- private String priority;
-+ private Priority priority;
+- **Access Modifiers**: `private` (e.g., `tasks` list in `TaskService`) ensures encapsulation. `public` methods expose the API. `protected` isn't explicitly needed here but could be applied if we split domains into different packages.
+- **Static**: `private static final long serialVersionUID` in `Task` and `DeadlineTask` ensures proper versioning during serialization. `TaskBuilder` is a `public static class`, meaning it doesn't require an instance of `Task` to be instantiated.
 
-- public Task(int id, String title, String priority) throws InvalidTaskException {
--     if (!priority.equals("HIGH") && !priority.equals("MEDIUM") && !priority.equals("LOW")) {
--         throw new InvalidTaskException("Invalid priority");
--     }
-+ public Task(int id, String title, Priority priority) {
-      this.id = id;
-      this.title = title;
-      this.priority = priority;
-  }
-```
+## 4. Arrays & Strings (Day 4)
 
----
+- **Strings, StringBuilder, StringBuffer**: The `generateReport()` method in `TaskService.java` demonstrates both `StringBuilder` (faster, non-thread-safe) and `StringBuffer` (thread-safe, synchronized) to construct complex string outputs efficiently instead of continuous string concatenation.
+- **1D Arrays**: `getTaskTitlesArray()` uses Streams to map a list of objects down to an array of just their string titles `String[]`.
+- **2D Arrays**: `getTaskMatrix()` constructs a `String[][]` containing IDs and Title/Priority mappings, simulating tabular data mapping.
 
-## 2. Built-in and Custom Annotations
+## 5. OOPs Fundamentals (Day 1)
 
-### What are Annotations?
-Annotations tag methods, classes, and fields with extra metadata. This metadata can be processed at compile-time (like `@Override`) or at runtime using Java Reflection (like custom tracing logs).
+- **Encapsulation**: State fields in `Task` (`id`, `title`, `priority`) are heavily encapsulated using `private` access modifiers and retrieved via public getters.
+- **Abstraction**: `Repository<T>` abstractly defines a storage medium without worrying about specific data types until instantiated.
+- **Inheritance & Polymorphism**: `DeadlineTask` inherits from `Task` using the `extends` keyword. It overrides `toString()`, showing runtime polymorphism.
+- **Interfaces**: `Schedulable.java` acts as a contract. `DeadlineTask` `implements` it to define functionality like `delay()` and `isOverdue()`.
 
-### Changes in the Codebase
+## 6. Java Collections & Generics (Day 5)
 
-**1. Custom Annotation (`LogExecution.java`):**
-We created a custom runtime annotation which can be placed on methods to describe what they are executing.
-```java
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+- **Generics**: `Repository<T>` allows saving any object type. In `TaskService`, `Function<Task, R>` maps a `Task` to any generic return type `R`.
+- **Collections**: `List<Task>` handles ordered data, `Set<Integer>` manages unique completed IDs automatically preventing duplicates, and `Map<Priority, List<Task>>` creates groupings of objects based on an Enum key.
 
-@Retention(RetentionPolicy.RUNTIME) // Available at runtime for Reflection
-@Target(ElementType.METHOD)         // Only applicable to Methods
-public @interface LogExecution {
-    String value() default "Executing method...";
-}
-```
+## 7. Exception Handling (Day 11)
 
-**2. Applying Annotations in `TaskService.java`:**
-We decorated existing methods with built-in (`@Deprecated`, `@SuppressWarnings`) and custom (`@LogExecution`) annotations.
+- **Custom Exceptions**: `InvalidTaskException.java` is a checked exception extending `Exception`. It is explicitly caught in `Main.java` when attempting to complete task `ID 99`.
+- **Try/Catch**: Utilized for File I/O operations and intercepting custom business logic exceptions safely to prevent application crashes.
 
-```java
-    // Custom Annotation: Used to store metadata about the method's purpose
-    @LogExecution("Adding a new task")
-    public void addTask(Task task) {
-        tasks.add(task);
-    }
+## 8. Enums & Annotations (Day 12)
 
-    // Built-in Annotation: Marks the method as outdated. The compiler will warn developers not to use it.
-    @Deprecated
-    public void showAll() {
-        tasks.forEach(System.out::println);
-    }
+- **Enums**: `Priority.java` (HIGH, MEDIUM, LOW) restricts task urgency to predefined constants.
+- **Annotations**: 
+  - *Built-in*: `@SuppressWarnings("deprecation")`, `@Override`, `@Deprecated`.
+  - *Custom*: `@LogExecution` is a retention policy `RUNTIME` annotation accessed via Reflection in `Main.java` to dynamically print metadata about executing methods.
 
-    // Built-in Annotation: Tells the compiler to ignore specific warnings (e.g., unchecked type casts during Deserialization)
-    @SuppressWarnings("unchecked")
-    @LogExecution("Loading tasks from file")
-    public void loadFromFile(String filename) { ... }
-```
+## 9. Java I/O (Day 12)
 
-**3. Parsing Annotations at Runtime (`Main.java`):**
-We used **Java Reflection** to detect if a method has an annotation attached, and if so, printed its value.
-```java
-Method m = TaskService.class.getMethod("addTask", Task.class);
-if (m.isAnnotationPresent(LogExecution.class)) {
-    LogExecution log = m.getAnnotation(LogExecution.class);
-    System.out.println("Method addTask() has @LogExecution: " + log.value());
-}
-```
+- **Serialization**: `loadFromFile` and `saveToFile` in `TaskService` use `ObjectInputStream` and `ObjectOutputStream` to write the full state of `tasks` and `completedTasks` continuously to a binary file `tasks.ser`.
 
----
+## 10. Java 8 Features (Day 13)
 
-## 3. Serialization and File Handling
+Implementation found natively in `TaskService` and called dynamically in `Main.java`:
+- **Predicate**: Evaluating conditions (`t -> t.getPriority() == Priority.HIGH`).
+- **Function**: Transforming object states (`t -> t.getTitle().toUpperCase()`).
+- **Consumer**: Iterating actions over sequences (`t -> System.out.println(...)`).
+- **Supplier**: Providing default values lazily for isolated `Task` lookups.
+- **Streams Pipeline**: Heavy use of `.stream()`, `.filter()`, `.map()`, `.reduce()`, and `.collect()` to streamline data processing.
 
-### What is Serialization?
-**Serialization** is the process of converting an object's state into a byte stream, so it can be saved to a file or sent over a network. **Deserialization** is the reverse process: reading the byte stream from a file to reconstruct the Java object.
+## 11. Threading Basics (Day 14)
 
-### Changes in the Codebase
+- **Thread & Runnable**: `BackupDaemon` implements `Runnable` to do background work isolated from the main flow.
+- **Synchronization**: `TaskService` uses `synchronized (lock)` surrounding critical sections.
+- **Wait and Notify**: When `addTask` is called, it triggers `lock.notifyAll()`. `BackupDaemon` pauses via `lock.wait()` entirely efficiently until new tasks arrive to simulate a background data sink.
 
-**1. Enabling Serialization (`Task.java`):**
-To serialize instances of customized classes, they must implement the `java.io.Serializable` marker interface.
-```diff
-+ import java.io.Serializable;
+## 12. Inner Classes (Day 15)
 
-- public class Task {
-+ public class Task implements Serializable {
-+    private static final long serialVersionUID = 1L;
-     private int id;
-     // ... rest of the code
-```
+Found explicitly across `Task` and `TaskService`:
+1. **Static Nested**: `TaskBuilder` (Builder pattern).
+2. **Member Inner**: `TaskLogger` (Accesses parent fields securely).
+3. **Local Inner**: `TaskSummary` (Confined to function scope).
+4. **Anonymous Inner**: Inline `Comparator` for sorting data visually on-the-fly.
 
-**2. Implementing File Handling (`TaskService.java`):**
-We used `FileOutputStream` and `ObjectOutputStream` to save our Collections (`List<Task>` and `Set<Integer>`) directly into a binary file (`tasks.ser`). We used `FileInputStream` and `ObjectInputStream` to read them back.
+## 13. JVM Internals & Memory Management (Day 21 & Day 22)
 
-**Saving to a File:**
-```java
-    @LogExecution("Saving tasks to file")
-    public void saveToFile(String filename) {
-        // Try-with-resources automatically closes the streams
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
-            oos.writeObject(tasks);           // Serializes the Task List
-            oos.writeObject(completedTasks);  // Serializes the Completed Task Set
-            System.out.println("Tasks and completion states saved successfully to " + filename);
-        } catch (IOException e) {
-            System.out.println("Error saving tasks: " + e.getMessage());
-        }
-    }
-```
-
-**Loading from a File:**
-```java
-    @SuppressWarnings("unchecked")
-    @LogExecution("Loading tasks from file")
-    public void loadFromFile(String filename) {
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename))) {
-            tasks = (List<Task>) ois.readObject();           // Deserializes to Task List
-            completedTasks = (Set<Integer>) ois.readObject();// Deserializes to Completed Task Set
-            System.out.println("Tasks and completion states loaded successfully from " + filename);
-        } catch (FileNotFoundException e) {
-            System.out.println("Save file not found. Starting fresh.");
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Error loading tasks: " + e.getMessage());
-        }
-    }
-```
+- **Classloader**: Loads classes dynamically (`Task`, `TaskService`, `Main`) into the runtime environment.
+- **JIT Compiler**: Translates `TaskService` repetitive Stream pipelines down into highly optimized machine code during runtime execution.
+- **Bytecode**: All `.java` files are compiled into platform-agnostic `.class` files.
+- **Memory Tracking**: 
+  - **Stack**: Stores primitive types (e.g., local loop integrators `i`, primitive `boolean` values for completed matching) and method frames for `filterTasks`, `mapTasks`, etc.
+  - **Heap**: Long-lived objects like `tasks` `ArrayList`, `Task` instances, and static structures reside here. When `Task` records are removed or replaced over a session's extent, the **Garbage Collector** seamlessly clears up unused memory objects automatically. 
