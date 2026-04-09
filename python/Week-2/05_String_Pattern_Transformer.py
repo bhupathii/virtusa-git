@@ -9,13 +9,11 @@
 s='hello21world'
 vowels='aeiou'
 final=[]
-
 s=[ch for ch in s if not ch.isdigit()]
 vowels_list=[]
 for i in s:
     if i in vowels:
-        vowels_list.append(i)
-        
+        vowels_list.append(i)       
 vowels_list[::-1]
 index=0
 for i in s:
@@ -23,7 +21,6 @@ for i in s:
         final.append(vowels_list[index])
         index+=1
     else:
-        final.append(i.upper())
-        
+        final.append(i.upper())     
 final_s="".join(final)
 print(final_s)
